@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -40,6 +43,8 @@ type ModuleHandler struct {
 // Returns:
 //   - *ModuleHandler: A new handler instance
 func NewModuleHandler() *ModuleHandler {
+	fmt.Println("[DEBUG] NewModuleHandler called") // <-- THIS MUST BE PRINTED
+
 	repo := moduleRepo.NewModuleRepository()
 	service := moduleService.NewModuleService(repo)
 	return &ModuleHandler{service: service}
@@ -109,6 +114,10 @@ func (h *ModuleHandler) CreateModule(ctx *gin.Context) {
 	// Step 2: Create response mapper
 	mapper := response.NewResponseMapper(requestID)
 
+	bodyBytes, _ := io.ReadAll(ctx.Request.Body)
+	fmt.Println("RAW BODY:", string(bodyBytes))
+	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	// Step 3: Validate request payload
 	var request module.ModuleRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
@@ -129,6 +138,7 @@ func (h *ModuleHandler) CreateModule(ctx *gin.Context) {
 	// Step 4: Execute business logic
 	responseData, err := h.service.CreateModule(request)
 	if err != nil {
+		fmt.Println("[DEBUG] Service error:", err)
 		// Map service errors to appropriate responses
 		handleServiceError(ctx, err, mapper)
 		return
